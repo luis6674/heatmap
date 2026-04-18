@@ -79,7 +79,7 @@
     .concert-date { font-size: 0.64rem; color: #555; margin-top: 1px; }
     .vote-bar { height: 3px; background: #222; border-radius: 2px; margin-top: 5px; overflow: hidden; }
     .vote-bar-fill { height: 100%; border-radius: 2px; transition: width 0.6s ease; }
-    .vote-count { font-size: 0.95rem; font-weight: 700; min-width: 22px; text-align: right; flex-shrink: 0; }
+    .vote-count { font-size: 0.95rem; font-weight: 700; min-width: 28px; text-align: right; flex-shrink: 0; }
 
     #map { flex: 1; }
 
@@ -142,7 +142,11 @@
 <div id="legend">
   <div class="legend-title">Vote Intensity</div>
   <div class="legend-gradient"></div>
-  <div class="legend-labels"><span>0</span><span>10</span><span>20</span></div>
+  <div class="legend-labels">
+    <span>0</span>
+    <span id="legend-mid">-</span>
+    <span id="legend-max">-</span>
+  </div>
 </div>
 
 <script>
@@ -181,7 +185,7 @@ const CONCERTS = [
   { id:"c23",  date:"Sep 8",  venue:"Red Rocks Amphitheatre",               city:"Morrison",        state:"CO", lat:39.665, lng:-105.205 },
   { id:"c24",  date:"Sep 11", venue:"White River Amphitheatre",             city:"Auburn",          state:"WA", lat:47.312, lng:-122.218 },
   { id:"c25",  date:"Sep 12", venue:"Cascades Amphitheater",                city:"Ridgefield",      state:"WA", lat:45.814, lng:-122.732 },
-  { id:"c26",  date:"Sep 14", venue:"Toyota Amphithéâtre",                  city:"Wheatland",       state:"CA", lat:39.014, lng:-121.410 },
+  { id:"c26",  date:"Sep 14", venue:"Toyota Amphitheatre",                  city:"Wheatland",       state:"CA", lat:39.014, lng:-121.410 },
   { id:"c27",  date:"Sep 16", venue:"Shoreline Amphitheatre",               city:"Mountain View",   state:"CA", lat:37.427, lng:-122.079 },
   { id:"c28",  date:"Sep 18", venue:"Long Beach Amphitheater",              city:"Long Beach",      state:"CA", lat:33.776, lng:-118.190 },
   { id:"c29",  date:"Sep 19", venue:"Michelob ULTRA Arena",                 city:"Las Vegas",       state:"NV", lat:36.103, lng:-115.174 },
@@ -203,12 +207,17 @@ const CONCERTS = [
   { id:"c45",  date:"Oct 23", venue:"Jiffy Lube Live",                      city:"Bristow",         state:"VA", lat:38.753, lng:-77.540  },
 ];
 
-// Random initial votes 0–20 (replace with real DB data via updateVotes)
+// Random initial votes (replace with real DB data via updateVotes)
 CONCERTS.forEach(c => { c.votes = Math.floor(Math.random() * 21); });
 
 // =============================================================================
-// Shared color scale — matches heat layer gradient and sidebar bars
+// Dynamic scale — always relative to the current leader
 // =============================================================================
+function getMaxVotes() {
+  return Math.max(1, ...CONCERTS.map(c => c.votes));
+}
+
+// Shared color scale: ratio is always votes / getMaxVotes(), so 0–1
 function voteColor(ratio) {
   if (ratio <= 0)   return '#444';
   if (ratio < 0.33) return '#4488ff';
@@ -233,19 +242,14 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
 // =============================================================================
 let heatLayer = null;
 
-function buildHeatData() {
-  return CONCERTS.map(c => [c.lat, c.lng, c.votes / 20]);
-}
-
 function refreshHeat() {
+  const max = getMaxVotes();
   if (heatLayer) map.removeLayer(heatLayer);
-  heatLayer = L.heatLayer(buildHeatData(), {
-    radius: 55,
-    blur: 40,
-    maxZoom: 10,
-    max: 1.0,
-    gradient: { 0.0: '#4488ff', 0.33: '#00ccaa', 0.66: '#ffcc00', 1.0: '#ff2200' }
-  }).addTo(map);
+  heatLayer = L.heatLayer(
+    CONCERTS.map(c => [c.lat, c.lng, c.votes / max]),
+    { radius: 55, blur: 40, maxZoom: 10, max: 1.0,
+      gradient: { 0.0: '#4488ff', 0.33: '#00ccaa', 0.66: '#ffcc00', 1.0: '#ff2200' } }
+  ).addTo(map);
 }
 
 // =============================================================================
@@ -254,23 +258,22 @@ function refreshHeat() {
 const markers = {};
 
 CONCERTS.forEach(c => {
-  const color = voteColor(c.votes / 20);
   const m = L.circleMarker([c.lat, c.lng], {
     radius: 6,
-    color: color,
-    fillColor: color,
+    color: '#444',
+    fillColor: '#444',
     fillOpacity: 0.9,
     weight: 1.5
   }).addTo(map);
-
   m.bindPopup('', { maxWidth: 230 });
   m.on('click', () => { m.setPopupContent(popupHtml(c)); m.openPopup(); });
   markers[c.id] = m;
 });
 
 function refreshMarkers() {
+  const max = getMaxVotes();
   CONCERTS.forEach(c => {
-    const color = voteColor(c.votes / 20);
+    const color = voteColor(c.votes / max);
     markers[c.id].setStyle({ color, fillColor: color });
   });
 }
@@ -285,11 +288,20 @@ function popupHtml(c) {
 }
 
 // =============================================================================
+// Legend
+// =============================================================================
+function refreshLegend() {
+  const max = getMaxVotes();
+  document.getElementById('legend-mid').textContent = Math.round(max / 2);
+  document.getElementById('legend-max').textContent = max;
+}
+
+// =============================================================================
 // Sidebar
 // =============================================================================
 function refreshSidebar() {
+  const max = getMaxVotes();
   const sorted = [...CONCERTS].sort((a, b) => b.votes - a.votes);
-  const max = sorted[0]?.votes || 1;
   const total = CONCERTS.reduce((s, c) => s + c.votes, 0);
   document.getElementById('total-count').textContent = total.toLocaleString();
 
@@ -297,8 +309,8 @@ function refreshSidebar() {
   list.innerHTML = '';
 
   sorted.forEach((c, i) => {
-    const pct = Math.round((c.votes / max) * 100);
-    const color = voteColor(c.votes / 20);
+    const ratio = c.votes / max;
+    const color = voteColor(ratio);
     const cls = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
     const div = document.createElement('div');
     div.className = 'concert-item ' + cls;
@@ -306,7 +318,7 @@ function refreshSidebar() {
       <div class="vote-bar-wrap">
         <div class="concert-name">${c.venue}</div>
         <div class="concert-date">${c.date} &middot; ${c.city}, ${c.state}</div>
-        <div class="vote-bar"><div class="vote-bar-fill" style="width:${pct}%;background:${color}"></div></div>
+        <div class="vote-bar"><div class="vote-bar-fill" style="width:${Math.round(ratio*100)}%;background:${color}"></div></div>
       </div>
       <div class="vote-count" style="color:${color}">${c.votes}</div>
     `;
@@ -332,6 +344,7 @@ function updateVotes(concertArray) {
   });
   refreshHeat();
   refreshMarkers();
+  refreshLegend();
   refreshSidebar();
 }
 
@@ -340,6 +353,7 @@ function updateVotes(concertArray) {
 // =============================================================================
 refreshHeat();
 refreshMarkers();
+refreshLegend();
 refreshSidebar();
 
 // =============================================================================
@@ -351,8 +365,7 @@ function simulateUpdate() {
   const updates = [];
   for (let i = 0; i < count; i++) {
     const c = CONCERTS[Math.floor(Math.random() * CONCERTS.length)];
-    const delta = Math.random() < 0.65 ? 1 : -1;
-    updates.push({ id: c.id, votes: Math.max(0, Math.min(200, c.votes + delta)) });
+    updates.push({ id: c.id, votes: Math.max(0, c.votes + 1) });
   }
   updateVotes(updates);
 }
