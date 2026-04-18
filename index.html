@@ -352,7 +352,7 @@ function simulateUpdate() {
   for (let i = 0; i < count; i++) {
     const c = CONCERTS[Math.floor(Math.random() * CONCERTS.length)];
     const delta = Math.random() < 0.65 ? 1 : -1;
-    updates.push({ id: c.id, votes: Math.max(0, Math.min(20, c.votes + delta)) });
+    updates.push({ id: c.id, votes: Math.max(0, Math.min(200, c.votes + delta)) });
   }
   updateVotes(updates);
 }
