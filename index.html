@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FFDP 2026 Tour — Vote Heatmap</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0a0a0a; color: #e0e0e0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+    #header {
+      background: #1a0000;
+      border-bottom: 2px solid #cc2200;
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    #header h1 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #ff4422;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+    #header .subtitle { font-size: 0.75rem; color: #888; margin-top: 2px; }
+    #total-votes {
+      background: #cc2200;
+      color: #fff;
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    #main { display: flex; flex: 1; overflow: hidden; }
+
+    #sidebar {
+      width: 300px;
+      background: #111;
+      border-right: 1px solid #2a2a2a;
+      overflow-y: auto;
+      flex-shrink: 0;
+    }
+    #sidebar-header {
+      padding: 10px 14px;
+      background: #1a0000;
+      border-bottom: 1px solid #2a2a2a;
+      font-size: 0.75rem;
+      color: #ff4422;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: 600;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .concert-item {
+      padding: 8px 12px;
+      border-bottom: 1px solid #1e1e1e;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .concert-item:hover { background: #191919; }
+    .concert-item.gold { background: #1a1000; }
+    .concert-item.silver { background: #141414; }
+    .concert-item.bronze { background: #120a00; }
+
+    .vote-bar-wrap { flex: 1; min-width: 0; }
+    .concert-name { font-size: 0.74rem; font-weight: 600; color: #ccc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .concert-date { font-size: 0.64rem; color: #555; margin-top: 1px; }
+    .vote-bar { height: 3px; background: #222; border-radius: 2px; margin-top: 5px; overflow: hidden; }
+    .vote-bar-fill { height: 100%; border-radius: 2px; transition: width 0.6s ease; }
+    .vote-count { font-size: 0.95rem; font-weight: 700; min-width: 22px; text-align: right; flex-shrink: 0; }
+
+    #map { flex: 1; }
+
+    #legend {
+      position: absolute;
+      bottom: 28px;
+      right: 10px;
+      background: rgba(10,10,10,0.9);
+      border: 1px solid #333;
+      border-radius: 6px;
+      padding: 10px 14px;
+      z-index: 1000;
+      font-size: 0.72rem;
+      pointer-events: none;
+    }
+    #legend .legend-title { color: #ff4422; font-weight: 700; margin-bottom: 7px; text-transform: uppercase; letter-spacing: 1px; }
+    .legend-gradient {
+      width: 160px; height: 10px;
+      background: linear-gradient(to right, #4488ff, #00ccaa, #ffcc00, #ff4422);
+      border-radius: 2px; margin-bottom: 4px;
+    }
+    .legend-labels { display: flex; justify-content: space-between; color: #666; }
+
+    .leaflet-popup-content-wrapper {
+      background: #111 !important;
+      border: 1px solid #cc2200 !important;
+      color: #eee !important;
+      border-radius: 6px !important;
+      box-shadow: 0 4px 20px rgba(200,30,0,0.3) !important;
+    }
+    .leaflet-popup-tip { background: #111 !important; }
+    .popup-date { font-size: 0.68rem; color: #ff4422; text-transform: uppercase; letter-spacing: 1px; }
+    .popup-venue { font-weight: 700; font-size: 0.95rem; margin: 3px 0 2px; }
+    .popup-city { color: #888; font-size: 0.8rem; }
+    .popup-votes { margin-top: 8px; font-size: 1.1rem; font-weight: 700; color: #ff6644; }
+
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: #0d0d0d; }
+    ::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+  </style>
+</head>
+<body>
+
+<div id="header">
+  <div>
+    <h1>&#x1F480; FFDP 2026 Tour — Vote Heatmap</h1>
+    <div class="subtitle">20th Anniversary World Tour &middot; North America &middot; 45 shows</div>
+  </div>
+  <div id="total-votes">Total votes: <span id="total-count">0</span></div>
+</div>
+
+<div id="main">
+  <div id="sidebar">
+    <div id="sidebar-header">&#x1F525; Concerts by Votes</div>
+    <div id="concert-list"></div>
+  </div>
+  <div id="map"></div>
+</div>
+
+<div id="legend">
+  <div class="legend-title">Vote Intensity</div>
+  <div class="legend-gradient"></div>
+  <div class="legend-labels"><span>0</span><span>10</span><span>20</span></div>
+</div>
+
+<script>
+// =============================================================================
+// FFDP 2026 Tour Vote Heatmap
+// =============================================================================
+// PUBLIC API
+//   updateVotes(array)  — call whenever your DB returns fresh vote counts.
+//   array format: [{ id: "c01", votes: 14 }, { id: "c02", votes: 3 }, ...]
+//   IDs match the "id" field in the CONCERTS array below.
+// =============================================================================
+
+const CONCERTS = [
+  { id:"c01",  date:"Jun 18", venue:"Inn of the Mountain Gods",             city:"Mescalero",       state:"NM", lat:33.152, lng:-105.771 },
+  { id:"c02",  date:"Jul 20", venue:"Freedom Mortgage Pavilion",            city:"Camden",          state:"NJ", lat:39.940, lng:-75.124  },
+  { id:"c03",  date:"Jul 22", venue:"Maine Savings Amphitheater",           city:"Bangor",          state:"ME", lat:44.803, lng:-68.782  },
+  { id:"c04",  date:"Jul 23", venue:"Saratoga Performing Arts Center",      city:"Saratoga Springs", state:"NY", lat:43.073, lng:-73.783  },
+  { id:"c05",  date:"Jul 25", venue:"Hersheypark Stadium",                  city:"Hershey",         state:"PA", lat:40.289, lng:-76.654  },
+  { id:"c06",  date:"Jul 26", venue:"Empower FCU Amphitheater",             city:"Syracuse",        state:"NY", lat:43.062, lng:-76.138  },
+  { id:"c07",  date:"Jul 28", venue:"BankNH Pavilion",                      city:"Gilford",         state:"NH", lat:43.573, lng:-71.434  },
+  { id:"c08",  date:"Jul 30", venue:"Xfinity Center",                       city:"Mansfield",       state:"MA", lat:42.024, lng:-71.218  },
+  { id:"c09",  date:"Aug 1",  venue:"Centre Bell",                          city:"Montreal",        state:"QC", lat:45.496, lng:-73.569  },
+  { id:"c10",  date:"Aug 2",  venue:"RBC Amphitheatre",                     city:"Toronto",         state:"ON", lat:43.627, lng:-79.382  },
+  { id:"c11",  date:"Aug 4",  venue:"Northwell at Jones Beach Theater",     city:"Wantagh",         state:"NY", lat:40.588, lng:-73.492  },
+  { id:"c12",  date:"Aug 5",  venue:"PNC Bank Arts Center",                 city:"Holmdel",         state:"NJ", lat:40.390, lng:-74.192  },
+  { id:"c13",  date:"Aug 7",  venue:"The Pavilion at Star Lake",            city:"Burgettstown",    state:"PA", lat:40.391, lng:-80.394  },
+  { id:"c14",  date:"Aug 8",  venue:"Ruoff Music Center",                   city:"Noblesville",     state:"IN", lat:40.044, lng:-86.002  },
+  { id:"c15",  date:"Aug 10", venue:"Riverbend Music Center",               city:"Cincinnati",      state:"OH", lat:39.148, lng:-84.408  },
+  { id:"c16",  date:"Aug 11", venue:"Blossom Music Center",                 city:"Cuyahoga Falls",  state:"OH", lat:41.124, lng:-81.552  },
+  { id:"c17",  date:"Aug 13", venue:"American Family Insurance Amphitheater", city:"Milwaukee",    state:"WI", lat:43.044, lng:-87.903  },
+  { id:"c18",  date:"Aug 15", venue:"Acrisure Amphitheater",                city:"Grand Rapids",    state:"MI", lat:42.947, lng:-85.672  },
+  { id:"c19",  date:"Aug 16", venue:"Pine Knob Music Theatre",              city:"Clarkston",       state:"MI", lat:42.739, lng:-83.384  },
+  { id:"c20",  date:"Aug 18", venue:"Mystic Lake Amphitheater",             city:"Shakopee",        state:"MN", lat:44.745, lng:-93.483  },
+  { id:"c21",  date:"Aug 19", venue:"Credit Union 1 Amphitheatre",          city:"Tinley Park",     state:"IL", lat:41.571, lng:-87.793  },
+  { id:"c22",  date:"Aug 21", venue:"Hollywood Casino Amphitheater",        city:"St. Louis",       state:"MO", lat:38.793, lng:-90.508  },
+  { id:"c23",  date:"Sep 8",  venue:"Red Rocks Amphitheatre",               city:"Morrison",        state:"CO", lat:39.665, lng:-105.205 },
+  { id:"c24",  date:"Sep 11", venue:"White River Amphitheatre",             city:"Auburn",          state:"WA", lat:47.312, lng:-122.218 },
+  { id:"c25",  date:"Sep 12", venue:"Cascades Amphitheater",                city:"Ridgefield",      state:"WA", lat:45.814, lng:-122.732 },
+  { id:"c26",  date:"Sep 14", venue:"Toyota Amphitheatre",                  city:"Wheatland",       state:"CA", lat:39.014, lng:-121.410 },
+  { id:"c27",  date:"Sep 16", venue:"Shoreline Amphitheatre",               city:"Mountain View",   state:"CA", lat:37.427, lng:-122.079 },
+  { id:"c28",  date:"Sep 18", venue:"Long Beach Amphitheater",              city:"Long Beach",      state:"CA", lat:33.776, lng:-118.190 },
+  { id:"c29",  date:"Sep 19", venue:"Michelob ULTRA Arena",                 city:"Las Vegas",       state:"NV", lat:36.103, lng:-115.174 },
+  { id:"c30",  date:"Sep 22", venue:"Utah First Credit Union Amphitheatre", city:"Salt Lake City",  state:"UT", lat:40.557, lng:-111.893 },
+  { id:"c31",  date:"Sep 24", venue:"Talking Stick Resort Amphitheatre",    city:"Phoenix",         state:"AZ", lat:33.537, lng:-112.007 },
+  { id:"c32",  date:"Sep 25", venue:"Isleta Amphitheater",                  city:"Albuquerque",     state:"NM", lat:34.980, lng:-106.712 },
+  { id:"c33",  date:"Sep 27", venue:"Cynthia Woods Mitchell Pavilion",      city:"Houston",         state:"TX", lat:30.174, lng:-95.453  },
+  { id:"c34",  date:"Sep 28", venue:"Germania Insurance Amphitheater",      city:"Austin",          state:"TX", lat:30.271, lng:-97.714  },
+  { id:"c35",  date:"Sep 30", venue:"Dickies Arena",                        city:"Fort Worth",      state:"TX", lat:32.751, lng:-97.364  },
+  { id:"c36",  date:"Oct 2",  venue:"Walmart AMP",                         city:"Rogers",          state:"AR", lat:36.322, lng:-94.118  },
+  { id:"c37",  date:"Oct 3",  venue:"T-Mobile Center",                     city:"Kansas City",     state:"MO", lat:39.091, lng:-94.582  },
+  { id:"c38",  date:"Oct 8",  venue:"FirstBank Amphitheater",               city:"Franklin",        state:"TN", lat:35.928, lng:-86.868  },
+  { id:"c39",  date:"Oct 13", venue:"Ameris Bank Amphitheatre",             city:"Alpharetta",      state:"GA", lat:34.079, lng:-84.280  },
+  { id:"c40",  date:"Oct 14", venue:"Coastal Credit Union Music Park",      city:"Raleigh",         state:"NC", lat:35.728, lng:-78.619  },
+  { id:"c41",  date:"Oct 16", venue:"PNC Music Pavilion",                   city:"Charlotte",       state:"NC", lat:35.229, lng:-80.918  },
+  { id:"c42",  date:"Oct 17", venue:"Veterans United Amphitheater",         city:"Virginia Beach",  state:"VA", lat:36.852, lng:-76.065  },
+  { id:"c43",  date:"Oct 19", venue:"Bon Secours Wellness Arena",           city:"Greenville",      state:"SC", lat:34.843, lng:-82.401  },
+  { id:"c44",  date:"Oct 21", venue:"Nationwide Arena",                     city:"Columbus",        state:"OH", lat:39.969, lng:-83.006  },
+  { id:"c45",  date:"Oct 23", venue:"Jiffy Lube Live",                      city:"Bristow",         state:"VA", lat:38.753, lng:-77.540  },
+];
+
+// Random initial votes 0–20 (replace with real DB data via updateVotes)
+CONCERTS.forEach(c => { c.votes = Math.floor(Math.random() * 21); });
+
+// =============================================================================
+// Map
+// =============================================================================
+const map = L.map('map').setView([39.5, -98.35], 4);
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+  subdomains: 'abcd',
+  maxZoom: 19
+}).addTo(map);
+
+// =============================================================================
+// Heat Layer
+// =============================================================================
+let heatLayer = null;
+
+function buildHeatData() {
+  return CONCERTS.map(c => [c.lat, c.lng, c.votes / 20]);
+}
+
+function refreshHeat() {
+  if (heatLayer) map.removeLayer(heatLayer);
+  heatLayer = L.heatLayer(buildHeatData(), {
+    radius: 55,
+    blur: 40,
+    maxZoom: 10,
+    max: 1.0,
+    gradient: { 0.0: '#4488ff', 0.33: '#00ccaa', 0.66: '#ffcc00', 1.0: '#ff2200' }
+  }).addTo(map);
+}
+
+// =============================================================================
+// Circle Markers
+// =============================================================================
+const markers = {};
+
+CONCERTS.forEach(c => {
+  const m = L.circleMarker([c.lat, c.lng], {
+    radius: 5,
+    color: '#ff4422',
+    fillColor: '#ff4422',
+    fillOpacity: 0.85,
+    weight: 1.5
+  }).addTo(map);
+
+  m.bindPopup('', { maxWidth: 230 });
+  m.on('click', () => { m.setPopupContent(popupHtml(c)); m.openPopup(); });
+  markers[c.id] = m;
+});
+
+function popupHtml(c) {
+  return `
+    <div class="popup-date">${c.date} &bull; ${c.state}</div>
+    <div class="popup-venue">${c.venue}</div>
+    <div class="popup-city">${c.city}, ${c.state}</div>
+    <div class="popup-votes">&#x1F525; ${c.votes} vote${c.votes !== 1 ? 's' : ''}</div>
+  `;
+}
+
+// =============================================================================
+// Sidebar
+// =============================================================================
+function voteColor(ratio) {
+  if (ratio <= 0)    return '#444';
+  if (ratio < 0.33)  return '#4488ff';
+  if (ratio < 0.66)  return '#00ccaa';
+  if (ratio < 0.85)  return '#ffcc00';
+  return '#ff4422';
+}
+
+function refreshSidebar() {
+  const sorted = [...CONCERTS].sort((a, b) => b.votes - a.votes);
+  const max = sorted[0]?.votes || 1;
+  const total = CONCERTS.reduce((s, c) => s + c.votes, 0);
+  document.getElementById('total-count').textContent = total.toLocaleString();
+
+  const list = document.getElementById('concert-list');
+  list.innerHTML = '';
+
+  sorted.forEach((c, i) => {
+    const pct = Math.round((c.votes / max) * 100);
+    const color = voteColor(c.votes / 20);
+    const cls = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
+    const div = document.createElement('div');
+    div.className = 'concert-item ' + cls;
+    div.innerHTML = `
+      <div class="vote-bar-wrap">
+        <div class="concert-name">${c.venue}</div>
+        <div class="concert-date">${c.date} &middot; ${c.city}, ${c.state}</div>
+        <div class="vote-bar"><div class="vote-bar-fill" style="width:${pct}%;background:${color}"></div></div>
+      </div>
+      <div class="vote-count" style="color:${color}">${c.votes}</div>
+    `;
+    div.addEventListener('click', () => {
+      map.setView([c.lat, c.lng], 8, { animate: true });
+      markers[c.id].setPopupContent(popupHtml(c));
+      markers[c.id].openPopup();
+    });
+    list.appendChild(div);
+  });
+}
+
+// =============================================================================
+// PUBLIC API — call this with data from your database
+// =============================================================================
+// concertArray: [{ id: "c01", votes: 14 }, { id: "c02", votes: 3 }, ...]
+function updateVotes(concertArray) {
+  concertArray.forEach(({ id, votes }) => {
+    const c = CONCERTS.find(x => x.id === id);
+    if (!c) return;
+    c.votes = votes;
+    if (markers[id]) markers[id].setPopupContent(popupHtml(c));
+  });
+  refreshHeat();
+  refreshSidebar();
+}
+
+// =============================================================================
+// Initial render
+// =============================================================================
+refreshHeat();
+refreshSidebar();
+
+// =============================================================================
+// Simulated real-time updates — replace with your polling / WebSocket logic
+// Example: setInterval(() => fetch('/api/votes').then(r=>r.json()).then(updateVotes), 5000);
+// =============================================================================
+function simulateUpdate() {
+  const count = 1 + Math.floor(Math.random() * 3);
+  const updates = [];
+  for (let i = 0; i < count; i++) {
+    const c = CONCERTS[Math.floor(Math.random() * CONCERTS.length)];
+    const delta = Math.random() < 0.65 ? 1 : -1;
+    updates.push({ id: c.id, votes: Math.max(0, Math.min(20, c.votes + delta)) });
+  }
+  updateVotes(updates);
+}
+
+setInterval(simulateUpdate, 1500);
+</script>
+</body>
+</html>
