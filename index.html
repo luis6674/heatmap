@@ -98,7 +98,7 @@
     #legend .legend-title { color: #ff4422; font-weight: 700; margin-bottom: 7px; text-transform: uppercase; letter-spacing: 1px; }
     .legend-gradient {
       width: 160px; height: 10px;
-      background: linear-gradient(to right, #64ff00, #99ff00, #ccee00, #ffdd00, #ffaa00, #ff7700, #ff3300, #ff0000);
+      background: linear-gradient(to right, #0033cc, #0066ee, #0099ff, #00bbee, #00ccaa, #00cc77, #00bb44, #66cc00, #aadd00, #ffcc00, #ff8800, #ff2200);
       border-radius: 2px; margin-bottom: 4px;
     }
     .legend-labels { display: flex; justify-content: space-between; color: #666; }
@@ -217,17 +217,22 @@ function getMaxVotes() {
   return Math.max(1, ...CONCERTS.map(c => c.votes));
 }
 
-// 8-segment warm scale: lime-green → yellow → orange → red
+// 12-segment scale: dark blue → blue → sky → cyan → teal → teal-green →
+//                  green → yellow-green → lime → yellow → orange → red
 function voteColor(ratio) {
-  if (ratio <= 0)    return '#444';
-  if (ratio < 0.125) return '#64ff00';
-  if (ratio < 0.25)  return '#99ff00';
-  if (ratio < 0.375) return '#ccee00';
-  if (ratio < 0.5)   return '#ffdd00';
-  if (ratio < 0.625) return '#ffaa00';
-  if (ratio < 0.75)  return '#ff7700';
-  if (ratio < 0.875) return '#ff3300';
-  return '#ff0000';
+  if (ratio <= 0)       return '#444';
+  if (ratio <  1/12)    return '#0033cc';
+  if (ratio <  2/12)    return '#0066ee';
+  if (ratio <  3/12)    return '#0099ff';
+  if (ratio <  4/12)    return '#00bbee';
+  if (ratio <  5/12)    return '#00ccaa';
+  if (ratio <  6/12)    return '#00cc77';
+  if (ratio <  7/12)    return '#00bb44';
+  if (ratio <  8/12)    return '#66cc00';
+  if (ratio <  9/12)    return '#aadd00';
+  if (ratio < 10/12)    return '#ffcc00';
+  if (ratio < 11/12)    return '#ff8800';
+  return '#ff2200';
 }
 
 // =============================================================================
@@ -252,8 +257,12 @@ function refreshHeat() {
   heatLayer = L.heatLayer(
     CONCERTS.map(c => [c.lat, c.lng, c.votes / max]),
     { radius: 55, blur: 40, maxZoom: 10, max: 1.0,
-      gradient: { 0.0: '#64ff00', 0.125: '#99ff00', 0.25: '#ccee00', 0.375: '#ffdd00',
-                  0.5: '#ffaa00', 0.625: '#ff7700', 0.75: '#ff3300', 1.0: '#ff0000' } }
+      gradient: {
+        0.000: '#0033cc', 0.083: '#0066ee', 0.167: '#0099ff',
+        0.250: '#00bbee', 0.333: '#00ccaa', 0.417: '#00cc77',
+        0.500: '#00bb44', 0.583: '#66cc00', 0.667: '#aadd00',
+        0.750: '#ffcc00', 0.833: '#ff8800', 1.000: '#ff2200'
+      } }
   ).addTo(map);
 }
 
