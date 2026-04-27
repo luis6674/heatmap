@@ -185,7 +185,7 @@ const CONCERTS = [
   { id:"c23",  date:"Sep 8",  venue:"Red Rocks Amphitheatre",               city:"Morrison",        state:"CO", lat:39.665, lng:-105.205 },
   { id:"c24",  date:"Sep 11", venue:"White River Amphitheatre",             city:"Auburn",          state:"WA", lat:47.312, lng:-122.218 },
   { id:"c25",  date:"Sep 12", venue:"Cascades Amphitheater",                city:"Ridgefield",      state:"WA", lat:45.814, lng:-122.732 },
-  { id:"c26",  date:"Sep 14", venue:"Toyota Amphitheatre",                  city:"Wheatland",       state:"CA", lat:39.014, lng:-121.410 },
+  { id:"c26",  date:"Sep 14", venue:"Toyota Amphithéâtre",                  city:"Wheatland",       state:"CA", lat:39.014, lng:-121.410 },
   { id:"c27",  date:"Sep 16", venue:"Shoreline Amphitheatre",               city:"Mountain View",   state:"CA", lat:37.427, lng:-122.079 },
   { id:"c28",  date:"Sep 18", venue:"Long Beach Amphitheater",              city:"Long Beach",      state:"CA", lat:33.776, lng:-118.190 },
   { id:"c29",  date:"Sep 19", venue:"Michelob ULTRA Arena",                 city:"Las Vegas",       state:"NV", lat:36.103, lng:-115.174 },
@@ -271,16 +271,16 @@ function refreshHeat() {
 }
 
 // =============================================================================
-// Circle Markers — fixed orange, size reflects vote share
+// Circle Markers — size reflects vote share
 // =============================================================================
 const markers = {};
 
 CONCERTS.forEach(c => {
   const m = L.circleMarker([c.lat, c.lng], {
     radius: markerRadius(0),
-    color: '#cc5500',
-    fillColor: '#ff8800',
-    fillOpacity: 0.45,
+    color: '#6a0000',
+    fillColor: '#cc2200',
+    fillOpacity: 0.55,
     weight: 1
   }).addTo(map);
   m.bindPopup('', { maxWidth: 230 });
