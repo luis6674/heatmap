@@ -217,8 +217,7 @@ function getMaxVotes() {
   return Math.max(1, ...CONCERTS.map(c => c.votes));
 }
 
-// 12-segment scale: dark blue → blue → sky → cyan → teal → teal-green →
-//                  green → yellow-green → lime → yellow → orange → red
+// 12-segment color scale used by the heat layer and sidebar
 function voteColor(ratio) {
   if (ratio <= 0)       return '#444';
   if (ratio <  1/12)    return '#0033cc';
@@ -233,6 +232,11 @@ function voteColor(ratio) {
   if (ratio < 10/12)    return '#ffcc00';
   if (ratio < 11/12)    return '#ff8800';
   return '#ff2200';
+}
+
+// Dot radius: 3px (no votes) → 22px (leader)
+function markerRadius(ratio) {
+  return 3 + Math.round(ratio * 19);
 }
 
 // =============================================================================
@@ -267,17 +271,17 @@ function refreshHeat() {
 }
 
 // =============================================================================
-// Circle Markers
+// Circle Markers — fixed orange, size reflects vote share
 // =============================================================================
 const markers = {};
 
 CONCERTS.forEach(c => {
   const m = L.circleMarker([c.lat, c.lng], {
-    radius: 6,
-    color: '#444',
-    fillColor: '#444',
-    fillOpacity: 0.9,
-    weight: 1.5
+    radius: markerRadius(0),
+    color: '#cc5500',
+    fillColor: '#ff8800',
+    fillOpacity: 0.45,
+    weight: 1
   }).addTo(map);
   m.bindPopup('', { maxWidth: 230 });
   m.on('click', () => { m.setPopupContent(popupHtml(c)); m.openPopup(); });
@@ -287,8 +291,7 @@ CONCERTS.forEach(c => {
 function refreshMarkers() {
   const max = getMaxVotes();
   CONCERTS.forEach(c => {
-    const color = voteColor(c.votes / max);
-    markers[c.id].setStyle({ color, fillColor: color });
+    markers[c.id].setRadius(markerRadius(c.votes / max));
   });
 }
 
