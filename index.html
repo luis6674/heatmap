@@ -142,7 +142,7 @@
     <div class="map-container" id="map-na"></div>
   </div>
 
-  <!-- Europe 2027 -->
+  <!-- Europe 2027 (hidden until first tab click; Leaflet init deferred to avoid zero-size canvas error) -->
   <div class="tour-pane" id="pane-eu" style="display:none">
     <div class="sidebar">
       <div class="sidebar-header">&#x1F525; Concerts by Votes</div>
@@ -228,10 +228,10 @@ const CONCERTS_EU = [
   { id:"e05", date:"Jan 23", venue:"O2 Arena",                    city:"London",       state:"UK", lat:51.5031, lng:  0.0032 },
   { id:"e06", date:"Jan 26", venue:"PSD Arena",                   city:"Düsseldorf", state:"DE", lat:51.2658, lng:  6.7990 },
   { id:"e07", date:"Jan 27", venue:"Barclays Arena",              city:"Hamburg",      state:"DE", lat:53.5838, lng:  9.9700 },
-  { id:"e08", date:"Jan 29", venue:"Atlas Arena",                 city:"Łódź",     state:"PL", lat:51.7591, lng: 19.4535 },
+  { id:"e08", date:"Jan 29", venue:"Atlas Arena",                 city:"Łódź", state:"PL", lat:51.7591, lng: 19.4535 },
   { id:"e09", date:"Jan 31", venue:"O2 Arena",                    city:"Prague",       state:"CZ", lat:50.1008, lng: 14.4925 },
   { id:"e10", date:"Feb 2",  venue:"Olympiahalle",                city:"Munich",       state:"DE", lat:48.1731, lng: 11.5489 },
-  { id:"e11", date:"Feb 4",  venue:"Hanns-Martin-Schleyer-Halle", city:"Stuttgart",    state:"DE", lat:48.7975, lng:  9.1970 },
+  { id:"e11", date:"Feb 4",  venue:"Hanns-Martin-Schleyer-Halle", city:"Stuttgart",   state:"DE", lat:48.7975, lng:  9.1970 },
   { id:"e12", date:"Feb 7",  venue:"AFAS Live",                   city:"Amsterdam",    state:"NL", lat:52.3127, lng:  4.9405 },
   { id:"e13", date:"Feb 8",  venue:"Vorst National",              city:"Brussels",     state:"BE", lat:50.8195, lng:  4.3363 },
   { id:"e14", date:"Feb 10", venue:"Accor Arena",                 city:"Paris",        state:"FR", lat:48.8376, lng:  2.3784 },
@@ -243,6 +243,11 @@ const CONCERTS_EU = [
   { id:"e20", date:"Feb 20", venue:"Avicii Arena",                city:"Stockholm",    state:"SE", lat:59.2933, lng: 18.0830 },
   { id:"e21", date:"Feb 22", venue:"Veikkaus Arena",              city:"Helsinki",     state:"FI", lat:60.2055, lng: 24.9274 },
 ];
+
+// Seed initial random votes (done here so EU votes accumulate via simulation
+// even before the EU Leaflet map is first opened)
+CONCERTS_NA.forEach(c => { c.votes = Math.floor(Math.random() * 21); });
+CONCERTS_EU.forEach(c => { c.votes = Math.floor(Math.random() * 21); });
 
 // =============================================================================
 // Shared constants
@@ -273,11 +278,11 @@ function voteColor(ratio) {
 function markerRadius(ratio) { return 3 + Math.round(ratio * 19); }
 
 // =============================================================================
-// Tour factory — creates an independent map + heatmap + sidebar instance
+// Tour factory
+// NOTE: call only when the map container is already visible in the DOM so
+// leaflet.heat gets a non-zero canvas size on first render.
 // =============================================================================
 function initTour({ concerts, mapId, listId, center, zoom }) {
-  concerts.forEach(c => { c.votes = Math.floor(Math.random() * 21); });
-
   function getMax() { return Math.max(1, ...concerts.map(c => c.votes)); }
 
   const map = L.map(mapId).setView(center, zoom);
@@ -327,7 +332,7 @@ function initTour({ concerts, mapId, listId, center, zoom }) {
   }
 
   function refreshSidebar() {
-    const max = getMax();
+    const max    = getMax();
     const sorted = [...concerts].sort((a, b) => b.votes - a.votes);
     const total  = concerts.reduce((s, c) => s + c.votes, 0);
     const list   = document.getElementById(listId);
@@ -368,8 +373,7 @@ function initTour({ concerts, mapId, listId, center, zoom }) {
     return refreshSidebar();
   }
 
-  // Initial render (no legend update — caller controls the shared legend)
-  refresh();
+  refresh(); // initial render
 
   return {
     map,
@@ -388,14 +392,16 @@ function initTour({ concerts, mapId, listId, center, zoom }) {
 }
 
 // =============================================================================
-// Initialize both tours
+// Initialize tours
+// NA is created immediately (its pane is visible on load).
+// EU is created lazily the first time the user clicks that tab, so that
+// leaflet.heat always gets a canvas with real dimensions.
 // =============================================================================
 const tours = {
   na: initTour({ concerts: CONCERTS_NA, mapId: 'map-na', listId: 'list-na', center: [39.5, -98.35], zoom: 4 }),
-  eu: initTour({ concerts: CONCERTS_EU, mapId: 'map-eu', listId: 'list-eu', center: [54, 9],        zoom: 5 })
+  eu: null
 };
 
-// Set initial legend and total count for the default (NA) tab
 tours.na.refreshLegend();
 document.getElementById('total-count').textContent =
   CONCERTS_NA.reduce((s, c) => s + c.votes, 0).toLocaleString();
@@ -415,8 +421,16 @@ function switchTab(tourId) {
   activeTour = tourId;
 
   document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.dataset.tour === tourId));
+
+  // Show the target pane before any Leaflet calls so map container has real dimensions
   document.querySelectorAll('.tour-pane').forEach(p => { p.style.display = 'none'; });
   document.getElementById('pane-' + tourId).style.display = 'flex';
+
+  // Lazy-init EU on first visit (pane is visible now, so canvas size is non-zero)
+  if (tourId === 'eu' && !tours.eu) {
+    tours.eu = initTour({ concerts: CONCERTS_EU, mapId: 'map-eu', listId: 'list-eu', center: [54, 9], zoom: 5 });
+  }
+
   document.getElementById('subtitle').innerHTML = TOUR_META[tourId];
 
   const tour = tours[tourId];
@@ -434,12 +448,12 @@ document.querySelectorAll('.tab').forEach(btn => {
 // PUBLIC API — call this with data from your database
 // =============================================================================
 // updateVotes([{ id: "c01", votes: 14 }, { id: "e05", votes: 9 }, ...])
-// IDs starting with "e" go to the Europe tour; all others go to North America.
 function updateVotes(array) {
   const byTour = { na: [], eu: [] };
   array.forEach(item => {
     (item.id.startsWith('e') ? byTour.eu : byTour.na).push(item);
   });
+
   if (byTour.na.length) {
     const total = tours.na.updateVotes(byTour.na);
     if (activeTour === 'na') {
@@ -447,11 +461,21 @@ function updateVotes(array) {
       document.getElementById('total-count').textContent = total.toLocaleString();
     }
   }
+
   if (byTour.eu.length) {
-    const total = tours.eu.updateVotes(byTour.eu);
-    if (activeTour === 'eu') {
-      tours.eu.refreshLegend();
-      document.getElementById('total-count').textContent = total.toLocaleString();
+    if (tours.eu) {
+      // EU map is live — update normally
+      const total = tours.eu.updateVotes(byTour.eu);
+      if (activeTour === 'eu') {
+        tours.eu.refreshLegend();
+        document.getElementById('total-count').textContent = total.toLocaleString();
+      }
+    } else {
+      // EU map not yet created — update raw data so it's ready when tab opens
+      byTour.eu.forEach(({ id, votes }) => {
+        const c = CONCERTS_EU.find(x => x.id === id);
+        if (c) c.votes = votes;
+      });
     }
   }
 }
