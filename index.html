@@ -17,12 +17,10 @@
       padding: 12px 20px;
       display: flex;
       align-items: center;
-      justify-content: space-between;
       flex-shrink: 0;
     }
     #header h1 { font-size: 1.2rem; font-weight: 700; color: #ff4422; letter-spacing: 2px; text-transform: uppercase; }
     #subtitle { font-size: 0.75rem; color: #888; margin-top: 2px; }
-    #total-votes { background: #cc2200; color: #fff; padding: 6px 16px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; white-space: nowrap; }
 
     #tab-bar {
       background: #120000;
@@ -122,7 +120,6 @@
     <h1>&#x1F480; FFDP Tour — Vote Heatmap</h1>
     <div id="subtitle">20th Anniversary World Tour &middot; North America &middot; 45 shows</div>
   </div>
-  <div id="total-votes">Total votes: <span id="total-count">0</span></div>
 </div>
 
 <div id="tab-bar">
@@ -336,7 +333,6 @@ function initTour({ concerts, mapId, listId, center, zoom }) {
   function refreshSidebar() {
     const max    = getMax();
     const sorted = [...concerts].sort((a, b) => b.votes - a.votes);
-    const total  = concerts.reduce((s, c) => s + c.votes, 0);
     const list   = document.getElementById(listId);
     list.innerHTML = '';
     sorted.forEach((c, i) => {
@@ -359,7 +355,6 @@ function initTour({ concerts, mapId, listId, center, zoom }) {
       });
       list.appendChild(div);
     });
-    return total;
   }
 
   function refreshLegend() {
@@ -371,7 +366,7 @@ function initTour({ concerts, mapId, listId, center, zoom }) {
   function refresh() {
     refreshHeat();
     refreshMarkers();
-    return refreshSidebar();
+    refreshSidebar();
   }
 
   refresh(); // initial render
@@ -387,7 +382,7 @@ function initTour({ concerts, mapId, listId, center, zoom }) {
         c.votes = votes;
         if (markers[id]) markers[id].setPopupContent(popupHtml(c));
       });
-      return refresh();
+      refresh();
     }
   };
 }
@@ -404,8 +399,6 @@ const tours = {
 };
 
 tours.na.refreshLegend();
-document.getElementById('total-count').textContent =
-  CONCERTS_NA.reduce((s, c) => s + c.votes, 0).toLocaleString();
 
 // =============================================================================
 // Tab switching
@@ -437,8 +430,6 @@ function switchTab(tourId) {
   const tour = tours[tourId];
   tour.map.invalidateSize();
   tour.refreshLegend();
-  document.getElementById('total-count').textContent =
-    tour.concerts.reduce((s, c) => s + c.votes, 0).toLocaleString();
 }
 
 document.querySelectorAll('.tab').forEach(btn => {
@@ -455,22 +446,11 @@ function updateVotes(array) {
     (item.id.startsWith('e') ? byTour.eu : byTour.na).push(item);
   });
 
-  if (byTour.na.length) {
-    const total = tours.na.updateVotes(byTour.na);
-    if (activeTour === 'na') {
-      tours.na.refreshLegend();
-      document.getElementById('total-count').textContent = total.toLocaleString();
-    }
-  }
+  if (byTour.na.length) tours.na.updateVotes(byTour.na);
 
   if (byTour.eu.length) {
     if (tours.eu) {
-      // EU map is live — update normally
-      const total = tours.eu.updateVotes(byTour.eu);
-      if (activeTour === 'eu') {
-        tours.eu.refreshLegend();
-        document.getElementById('total-count').textContent = total.toLocaleString();
-      }
+      tours.eu.updateVotes(byTour.eu);
     } else {
       // EU map not yet created — update raw data so it's ready when tab opens
       byTour.eu.forEach(({ id, votes }) => {
@@ -479,6 +459,9 @@ function updateVotes(array) {
       });
     }
   }
+
+  if (activeTour === 'na') tours.na.refreshLegend();
+  else if (tours.eu)      tours.eu.refreshLegend();
 }
 
 // =============================================================================
