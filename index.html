@@ -81,7 +81,6 @@
     .concert-date  { font-size: 0.64rem; color: #555; margin-top: 1px; }
     .vote-bar      { height: 3px; background: #222; border-radius: 2px; margin-top: 5px; overflow: hidden; }
     .vote-bar-fill { height: 100%; border-radius: 2px; transition: width 0.6s ease; }
-    .vote-count    { font-size: 0.95rem; font-weight: 700; min-width: 28px; text-align: right; flex-shrink: 0; }
 
     .map-container { flex: 1; }
 
@@ -107,10 +106,9 @@
 
     .leaflet-popup-content-wrapper { background: #111 !important; border: 1px solid #cc2200 !important; color: #eee !important; border-radius: 6px !important; box-shadow: 0 4px 20px rgba(200,30,0,0.3) !important; }
     .leaflet-popup-tip { background: #111 !important; }
-    .popup-date   { font-size: 0.68rem; color: #ff4422; text-transform: uppercase; letter-spacing: 1px; }
-    .popup-venue  { font-weight: 700; font-size: 0.95rem; margin: 3px 0 2px; }
-    .popup-city   { color: #888; font-size: 0.8rem; }
-    .popup-votes  { margin-top: 8px; font-size: 1.1rem; font-weight: 700; color: #ff6644; }
+    .popup-date  { font-size: 0.68rem; color: #ff4422; text-transform: uppercase; letter-spacing: 1px; }
+    .popup-venue { font-weight: 700; font-size: 0.95rem; margin: 3px 0 2px; }
+    .popup-city  { color: #888; font-size: 0.8rem; }
 
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-track { background: #0d0d0d; }
@@ -296,11 +294,15 @@ function initTour({ concerts, mapId, listId, center, zoom }) {
   const markers = {};
 
   function popupHtml(c) {
+    const ratio = c.votes / getMax();
+    const color = voteColor(ratio);
     return `
       <div class="popup-date">${c.date} &bull; ${c.state}</div>
       <div class="popup-venue">${c.venue}</div>
       <div class="popup-city">${c.city}, ${c.state}</div>
-      <div class="popup-votes">&#x1F525; ${c.votes} vote${c.votes !== 1 ? 's' : ''}</div>
+      <div style="margin-top:10px;height:4px;background:#2a2a2a;border-radius:2px;overflow:hidden;">
+        <div style="height:100%;width:${Math.round(ratio * 100)}%;background:${color};border-radius:2px;transition:width 0.5s ease;"></div>
+      </div>
     `;
   }
 
@@ -349,7 +351,6 @@ function initTour({ concerts, mapId, listId, center, zoom }) {
           <div class="concert-date">${c.date} &middot; ${c.city}, ${c.state}</div>
           <div class="vote-bar"><div class="vote-bar-fill" style="width:${Math.round(ratio*100)}%;background:${color}"></div></div>
         </div>
-        <div class="vote-count" style="color:${color}">${c.votes}</div>
       `;
       div.addEventListener('click', () => {
         map.setView([c.lat, c.lng], 8, { animate: true });
