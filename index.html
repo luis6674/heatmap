@@ -11,6 +11,7 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Segoe UI', sans-serif; background: #0a0a0a; color: #e0e0e0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
+    /* ── Header ── */
     #header {
       background: #1a0000;
       border-bottom: 2px solid #cc2200;
@@ -20,12 +21,14 @@
       flex-shrink: 0;
     }
     #header h1 { font-size: 1.2rem; font-weight: 700; color: #ff4422; letter-spacing: 2px; text-transform: uppercase; }
-    #subtitle { font-size: 0.75rem; color: #888; margin-top: 2px; }
+    #subtitle  { font-size: 0.75rem; color: #888; margin-top: 2px; }
 
+    /* ── Tab bar ── */
     #tab-bar {
       background: #120000;
       border-bottom: 1px solid #2a0000;
       display: flex;
+      align-items: center;
       flex-shrink: 0;
     }
     .tab {
@@ -40,13 +43,36 @@
       cursor: pointer;
       transition: color 0.15s, border-color 0.15s;
       text-transform: uppercase;
+      white-space: nowrap;
     }
-    .tab:hover { color: #cc5540; }
+    .tab:hover  { color: #cc5540; }
     .tab.active { color: #ff4422; border-bottom-color: #cc2200; }
+    /* Short labels shown only on mobile */
+    .tab-short { display: none; }
 
+    /* Sidebar toggle — hidden on desktop, shown on mobile */
+    #sidebar-toggle {
+      display: none;
+      margin-left: auto;
+      margin-right: 10px;
+      padding: 5px 12px;
+      background: none;
+      border: 1px solid #440000;
+      border-radius: 4px;
+      color: #ff4422;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    #sidebar-toggle:hover { border-color: #cc2200; }
+
+    /* ── Layout ── */
     #main { display: flex; flex: 1; overflow: hidden; position: relative; }
     .tour-pane { display: flex; flex: 1; overflow: hidden; }
 
+    /* ── Sidebar ── */
     .sidebar {
       width: 300px;
       background: #111;
@@ -80,8 +106,10 @@
     .vote-bar      { height: 3px; background: #222; border-radius: 2px; margin-top: 5px; overflow: hidden; }
     .vote-bar-fill { height: 100%; border-radius: 2px; transition: width 0.6s ease; }
 
+    /* ── Map ── */
     .map-container { flex: 1; }
 
+    /* ── Legend ── */
     #legend {
       position: absolute;
       bottom: 28px;
@@ -102,15 +130,75 @@
     }
     .legend-labels { display: flex; justify-content: space-between; color: #666; }
 
+    /* ── Popup ── */
     .leaflet-popup-content-wrapper { background: #111 !important; border: 1px solid #cc2200 !important; color: #eee !important; border-radius: 6px !important; box-shadow: 0 4px 20px rgba(200,30,0,0.3) !important; }
     .leaflet-popup-tip { background: #111 !important; }
     .popup-date  { font-size: 0.68rem; color: #ff4422; text-transform: uppercase; letter-spacing: 1px; }
     .popup-venue { font-weight: 700; font-size: 0.95rem; margin: 3px 0 2px; }
     .popup-city  { color: #888; font-size: 0.8rem; }
 
+    /* ── Mobile backdrop ── */
+    #sidebar-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.55);
+      z-index: 1999;
+    }
+    #sidebar-backdrop.visible { display: block; }
+
+    /* ── Scrollbar ── */
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-track { background: #0d0d0d; }
     ::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+
+    /* ======================================================
+       Mobile  (≤ 768 px)
+       ====================================================== */
+    @media (max-width: 768px) {
+
+      /* Header */
+      #header h1 { font-size: 0.95rem; letter-spacing: 1px; }
+      #subtitle  { display: none; }
+
+      /* Tabs — short labels, tighter padding */
+      .tab       { padding: 9px 12px; letter-spacing: 0; }
+      .tab-full  { display: none; }
+      .tab-short { display: inline; }
+
+      /* Show toggle button */
+      #sidebar-toggle { display: block; }
+
+      /* Sidebar — fixed bottom sheet that slides up */
+      .sidebar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        height: 52vh;
+        z-index: 2000;
+        border-right: none;
+        border-top: 2px solid #cc2200;
+        border-radius: 14px 14px 0 0;
+        transform: translateY(100%);
+        transition: transform 0.3s ease;
+      }
+      .sidebar.open { transform: translateY(0); }
+      .sidebar-header { border-radius: 14px 14px 0 0; }
+
+      /* Larger touch targets */
+      .concert-item { padding: 12px 14px; }
+
+      /* Legend — smaller, higher to clear Leaflet attribution */
+      #legend {
+        bottom: 42px;
+        right: 8px;
+        padding: 7px 10px;
+        font-size: 0.64rem;
+      }
+      .legend-gradient { width: 110px; height: 8px; }
+    }
   </style>
 </head>
 <body>
@@ -123,8 +211,13 @@
 </div>
 
 <div id="tab-bar">
-  <button class="tab active" data-tour="na">&#x1F30E; North America &middot; 2026</button>
-  <button class="tab"        data-tour="eu">&#x1F30D; Europe &middot; 2027</button>
+  <button class="tab active" data-tour="na">
+    &#x1F30E; <span class="tab-full">North America &middot; 2026</span><span class="tab-short">NA '26</span>
+  </button>
+  <button class="tab" data-tour="eu">
+    &#x1F30D; <span class="tab-full">Europe &middot; 2027</span><span class="tab-short">EU '27</span>
+  </button>
+  <button id="sidebar-toggle">&#9776; Concerts</button>
 </div>
 
 <div id="main">
@@ -137,7 +230,7 @@
     <div class="map-container" id="map-na"></div>
   </div>
 
-  <!-- Europe 2027 (hidden until first tab click; Leaflet init deferred to avoid zero-size canvas error) -->
+  <!-- Europe 2027 (Leaflet init deferred until first tab click) -->
   <div class="tour-pane" id="pane-eu" style="display:none">
     <div class="sidebar">
       <div class="sidebar-header">&#x1F525; Concerts by Votes</div>
@@ -146,6 +239,9 @@
     <div class="map-container" id="map-eu"></div>
   </div>
 </div>
+
+<!-- Backdrop: tapping it closes the sidebar on mobile -->
+<div id="sidebar-backdrop"></div>
 
 <div id="legend">
   <div class="legend-title">Vote Intensity</div>
@@ -216,31 +312,29 @@ const CONCERTS_NA = [
 ];
 
 const CONCERTS_EU = [
-  { id:"e01", date:"Jan 16", venue:"AO Arena",                    city:"Manchester",   state:"UK", lat:53.4772, lng: -2.2460 },
-  { id:"e02", date:"Jan 17", venue:"OVO Hydro",                   city:"Glasgow",      state:"UK", lat:55.8597, lng: -4.2875 },
-  { id:"e03", date:"Jan 19", venue:"3Arena",                      city:"Dublin",       state:"IE", lat:53.3478, lng: -6.2292 },
-  { id:"e04", date:"Jan 22", venue:"BP Pulse Arena",              city:"Birmingham",   state:"UK", lat:52.4868, lng: -1.8956 },
-  { id:"e05", date:"Jan 23", venue:"O2 Arena",                    city:"London",       state:"UK", lat:51.5031, lng:  0.0032 },
-  { id:"e06", date:"Jan 26", venue:"PSD Arena",                   city:"Düsseldorf", state:"DE", lat:51.2658, lng:  6.7990 },
-  { id:"e07", date:"Jan 27", venue:"Barclays Arena",              city:"Hamburg",      state:"DE", lat:53.5838, lng:  9.9700 },
-  { id:"e08", date:"Jan 29", venue:"Atlas Arena",                 city:"Łódź", state:"PL", lat:51.7591, lng: 19.4535 },
-  { id:"e09", date:"Jan 31", venue:"O2 Arena",                    city:"Prague",       state:"CZ", lat:50.1008, lng: 14.4925 },
-  { id:"e10", date:"Feb 2",  venue:"Olympiahalle",                city:"Munich",       state:"DE", lat:48.1731, lng: 11.5489 },
-  { id:"e11", date:"Feb 4",  venue:"Hanns-Martin-Schleyer-Halle", city:"Stuttgart",   state:"DE", lat:48.7975, lng:  9.1970 },
-  { id:"e12", date:"Feb 7",  venue:"AFAS Live",                   city:"Amsterdam",    state:"NL", lat:52.3127, lng:  4.9405 },
-  { id:"e13", date:"Feb 8",  venue:"Vorst National",              city:"Brussels",     state:"BE", lat:50.8195, lng:  4.3363 },
-  { id:"e14", date:"Feb 10", venue:"Accor Arena",                 city:"Paris",        state:"FR", lat:48.8376, lng:  2.3784 },
-  { id:"e15", date:"Feb 12", venue:"Hallenstadion",               city:"Zurich",       state:"CH", lat:47.4116, lng:  8.5055 },
-  { id:"e16", date:"Feb 14", venue:"Wiener Stadthalle",           city:"Vienna",       state:"AT", lat:48.2007, lng: 16.3336 },
-  { id:"e17", date:"Feb 16", venue:"Uber Arena",                  city:"Berlin",       state:"DE", lat:52.5031, lng: 13.4332 },
-  { id:"e18", date:"Feb 17", venue:"Royal Arena",                 city:"Copenhagen",   state:"DK", lat:55.6378, lng: 12.5789 },
-  { id:"e19", date:"Feb 19", venue:"Unity Arena",                 city:"Oslo",         state:"NO", lat:59.9505, lng: 10.5893 },
-  { id:"e20", date:"Feb 20", venue:"Avicii Arena",                city:"Stockholm",    state:"SE", lat:59.2933, lng: 18.0830 },
-  { id:"e21", date:"Feb 22", venue:"Veikkaus Arena",              city:"Helsinki",     state:"FI", lat:60.2055, lng: 24.9274 },
+  { id:"e01", date:"Jan 16", venue:"AO Arena",                     city:"Manchester",  state:"UK", lat:53.4772, lng: -2.2460 },
+  { id:"e02", date:"Jan 17", venue:"OVO Hydro",                    city:"Glasgow",     state:"UK", lat:55.8597, lng: -4.2875 },
+  { id:"e03", date:"Jan 19", venue:"3Arena",                       city:"Dublin",      state:"IE", lat:53.3478, lng: -6.2292 },
+  { id:"e04", date:"Jan 22", venue:"BP Pulse Arena",               city:"Birmingham",  state:"UK", lat:52.4868, lng: -1.8956 },
+  { id:"e05", date:"Jan 23", venue:"O2 Arena",                     city:"London",      state:"UK", lat:51.5031, lng:  0.0032 },
+  { id:"e06", date:"Jan 26", venue:"PSD Arena",                    city:"Düsseldorf", state:"DE", lat:51.2658, lng:  6.7990 },
+  { id:"e07", date:"Jan 27", venue:"Barclays Arena",               city:"Hamburg",     state:"DE", lat:53.5838, lng:  9.9700 },
+  { id:"e08", date:"Jan 29", venue:"Atlas Arena",                  city:"Łódź", state:"PL", lat:51.7591, lng: 19.4535 },
+  { id:"e09", date:"Jan 31", venue:"O2 Arena",                     city:"Prague",      state:"CZ", lat:50.1008, lng: 14.4925 },
+  { id:"e10", date:"Feb 2",  venue:"Olympiahalle",                 city:"Munich",      state:"DE", lat:48.1731, lng: 11.5489 },
+  { id:"e11", date:"Feb 4",  venue:"Hanns-Martin-Schleyer-Halle",  city:"Stuttgart",   state:"DE", lat:48.7975, lng:  9.1970 },
+  { id:"e12", date:"Feb 7",  venue:"AFAS Live",                    city:"Amsterdam",   state:"NL", lat:52.3127, lng:  4.9405 },
+  { id:"e13", date:"Feb 8",  venue:"Vorst National",               city:"Brussels",    state:"BE", lat:50.8195, lng:  4.3363 },
+  { id:"e14", date:"Feb 10", venue:"Accor Arena",                  city:"Paris",       state:"FR", lat:48.8376, lng:  2.3784 },
+  { id:"e15", date:"Feb 12", venue:"Hallenstadion",                city:"Zurich",      state:"CH", lat:47.4116, lng:  8.5055 },
+  { id:"e16", date:"Feb 14", venue:"Wiener Stadthalle",            city:"Vienna",      state:"AT", lat:48.2007, lng: 16.3336 },
+  { id:"e17", date:"Feb 16", venue:"Uber Arena",                   city:"Berlin",      state:"DE", lat:52.5031, lng: 13.4332 },
+  { id:"e18", date:"Feb 17", venue:"Royal Arena",                  city:"Copenhagen",  state:"DK", lat:55.6378, lng: 12.5789 },
+  { id:"e19", date:"Feb 19", venue:"Unity Arena",                  city:"Oslo",        state:"NO", lat:59.9505, lng: 10.5893 },
+  { id:"e20", date:"Feb 20", venue:"Avicii Arena",                 city:"Stockholm",   state:"SE", lat:59.2933, lng: 18.0830 },
+  { id:"e21", date:"Feb 22", venue:"Veikkaus Arena",               city:"Helsinki",    state:"FI", lat:60.2055, lng: 24.9274 },
 ];
 
-// Seed initial random votes (done here so EU votes accumulate via simulation
-// even before the EU Leaflet map is first opened)
 CONCERTS_NA.forEach(c => { c.votes = Math.floor(Math.random() * 21); });
 CONCERTS_EU.forEach(c => { c.votes = Math.floor(Math.random() * 21); });
 
@@ -272,10 +366,17 @@ function voteColor(ratio) {
 
 function markerRadius(ratio) { return 3 + Math.round(ratio * 19); }
 
+// Close the sidebar sheet (mobile) and reset the toggle button label.
+function closeSidebar() {
+  document.querySelectorAll('.sidebar').forEach(s => s.classList.remove('open'));
+  document.getElementById('sidebar-backdrop').classList.remove('visible');
+  document.getElementById('sidebar-toggle').innerHTML = '&#9776; Concerts';
+}
+
 // =============================================================================
 // Tour factory
-// NOTE: call only when the map container is already visible in the DOM so
-// leaflet.heat gets a non-zero canvas size on first render.
+// Must be called only when the map container is visible so leaflet.heat gets
+// a non-zero canvas size on first render.
 // =============================================================================
 function initTour({ concerts, mapId, listId, center, zoom }) {
   function getMax() { return Math.max(1, ...concerts.map(c => c.votes)); }
@@ -298,10 +399,13 @@ function initTour({ concerts, mapId, listId, center, zoom }) {
       <div class="popup-venue">${c.venue}</div>
       <div class="popup-city">${c.city}, ${c.state}</div>
       <div style="margin-top:10px;height:4px;background:#2a2a2a;border-radius:2px;overflow:hidden;">
-        <div style="height:100%;width:${Math.round(ratio * 100)}%;background:${color};border-radius:2px;transition:width 0.5s ease;"></div>
+        <div style="height:100%;width:${Math.round(ratio*100)}%;background:${color};border-radius:2px;transition:width 0.5s ease;"></div>
       </div>
     `;
   }
+
+  // Popup width: leave room for phone edges on narrow screens
+  const popupMaxWidth = window.innerWidth < 480 ? window.innerWidth - 60 : 230;
 
   concerts.forEach(c => {
     const m = L.circleMarker([c.lat, c.lng], {
@@ -311,7 +415,7 @@ function initTour({ concerts, mapId, listId, center, zoom }) {
       fillOpacity: 0.55,
       weight: 1
     }).addTo(map);
-    m.bindPopup('', { maxWidth: 230 });
+    m.bindPopup('', { maxWidth: popupMaxWidth });
     m.on('click', () => { m.setPopupContent(popupHtml(c)); m.openPopup(); });
     markers[c.id] = m;
   });
@@ -352,6 +456,8 @@ function initTour({ concerts, mapId, listId, center, zoom }) {
         map.setView([c.lat, c.lng], 8, { animate: true });
         markers[c.id].setPopupContent(popupHtml(c));
         markers[c.id].openPopup();
+        // On mobile, close the sidebar so the map and popup are visible
+        if (window.innerWidth <= 768) closeSidebar();
       });
       list.appendChild(div);
     });
@@ -369,7 +475,7 @@ function initTour({ concerts, mapId, listId, center, zoom }) {
     refreshSidebar();
   }
 
-  refresh(); // initial render
+  refresh();
 
   return {
     map,
@@ -389,16 +495,26 @@ function initTour({ concerts, mapId, listId, center, zoom }) {
 
 // =============================================================================
 // Initialize tours
-// NA is created immediately (its pane is visible on load).
-// EU is created lazily the first time the user clicks that tab, so that
-// leaflet.heat always gets a canvas with real dimensions.
 // =============================================================================
 const tours = {
   na: initTour({ concerts: CONCERTS_NA, mapId: 'map-na', listId: 'list-na', center: [39.5, -98.35], zoom: 4 }),
   eu: null
 };
-
 tours.na.refreshLegend();
+
+// =============================================================================
+// Sidebar toggle (mobile)
+// =============================================================================
+const sidebarToggle = document.getElementById('sidebar-toggle');
+
+sidebarToggle.addEventListener('click', () => {
+  const sidebar = document.querySelector('#pane-' + activeTour + ' .sidebar');
+  const isOpen  = sidebar.classList.toggle('open');
+  document.getElementById('sidebar-backdrop').classList.toggle('visible', isOpen);
+  sidebarToggle.innerHTML = isOpen ? '&#10005; Close' : '&#9776; Concerts';
+});
+
+document.getElementById('sidebar-backdrop').addEventListener('click', closeSidebar);
 
 // =============================================================================
 // Tab switching
@@ -412,15 +528,16 @@ const TOUR_META = {
 
 function switchTab(tourId) {
   if (tourId === activeTour) return;
+  closeSidebar(); // always close the sheet when switching tours
   activeTour = tourId;
 
   document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.dataset.tour === tourId));
 
-  // Show the target pane before any Leaflet calls so map container has real dimensions
+  // Show the target pane first so Leaflet gets real canvas dimensions
   document.querySelectorAll('.tour-pane').forEach(p => { p.style.display = 'none'; });
   document.getElementById('pane-' + tourId).style.display = 'flex';
 
-  // Lazy-init EU on first visit (pane is visible now, so canvas size is non-zero)
+  // Lazy-init EU on first visit
   if (tourId === 'eu' && !tours.eu) {
     tours.eu = initTour({ concerts: CONCERTS_EU, mapId: 'map-eu', listId: 'list-eu', center: [54, 9], zoom: 5 });
   }
@@ -437,9 +554,8 @@ document.querySelectorAll('.tab').forEach(btn => {
 });
 
 // =============================================================================
-// PUBLIC API — call this with data from your database
+// PUBLIC API
 // =============================================================================
-// updateVotes([{ id: "c01", votes: 14 }, { id: "e05", votes: 9 }, ...])
 function updateVotes(array) {
   const byTour = { na: [], eu: [] };
   array.forEach(item => {
@@ -452,7 +568,6 @@ function updateVotes(array) {
     if (tours.eu) {
       tours.eu.updateVotes(byTour.eu);
     } else {
-      // EU map not yet created — update raw data so it's ready when tab opens
       byTour.eu.forEach(({ id, votes }) => {
         const c = CONCERTS_EU.find(x => x.id === id);
         if (c) c.votes = votes;
@@ -461,12 +576,12 @@ function updateVotes(array) {
   }
 
   if (activeTour === 'na') tours.na.refreshLegend();
-  else if (tours.eu)      tours.eu.refreshLegend();
+  else if (tours.eu)       tours.eu.refreshLegend();
 }
 
 // =============================================================================
-// Simulated real-time updates — replace with your polling / WebSocket logic
-// Example: setInterval(() => fetch('/api/votes').then(r=>r.json()).then(updateVotes), 5000);
+// Simulated live updates
+// Replace with: setInterval(() => fetch('/votes.json').then(r=>r.json()).then(updateVotes), 5000);
 // =============================================================================
 function simulateUpdate() {
   const count = 1 + Math.floor(Math.random() * 3);
