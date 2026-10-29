@@ -368,6 +368,8 @@ function voteColor(ratio) {
   return '#ff2200';
 }
 
+const CARTO_API_KEY = 'cb1_4xko_1_42e01e94d7787088257696d5';
+
 function markerRadius(ratio) { return 3 + Math.round(ratio * 19); }
 
 // Close the sidebar sheet (mobile) and reset the toggle button label.
@@ -386,14 +388,9 @@ function initTour({ concerts, mapId, listId, center, zoom }) {
   function getMax() { return Math.max(1, ...concerts.map(c => c.votes)); }
 
   const map = L.map(mapId).setView(center, zoom);
-  const ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/';
-  L.tileLayer(ESRI + 'World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
-    attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
-    maxNativeZoom: 16,
-    maxZoom: 19
-  }).addTo(map);
-  L.tileLayer(ESRI + 'World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}', {
-    maxNativeZoom: 16,
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=' + CARTO_API_KEY, {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    subdomains: 'abcd',
     maxZoom: 19
   }).addTo(map);
 
