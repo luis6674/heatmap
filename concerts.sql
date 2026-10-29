@@ -78,4 +78,5 @@ INSERT INTO concerts (date, location, venue) VALUES
 ('2027-02-17', 'Copenhagen, DK',    'Royal Arena'),
 ('2027-02-19', 'Oslo, NO',          'Unity Arena'),
 ('2027-02-20', 'Stockholm, SE',     'Avicii Arena'),
-('2027-02-22', 'Helsinki, FI',      'Veikkaus Arena');
+('2027-02-22', 'Helsinki, FI',      'Veikkaus Arena'),
+('2027-07-29', 'Wacken, DE',        'Wacken Open Air 2027');
