@@ -206,23 +206,23 @@
 <div id="header">
   <div>
     <h1>&#x1F480; FFDP Tour — Vote Heatmap</h1>
-    <div id="subtitle">20th Anniversary World Tour &middot; North America &middot; 49 shows</div>
+    <div id="subtitle">20th Anniversary World Tour &middot; Europe &middot; 21 shows</div>
   </div>
 </div>
 
 <div id="tab-bar">
-  <button class="tab active" data-tour="na">
+  <button class="tab" data-tour="na">
     &#x1F30E; <span class="tab-full">North America &middot; 2026</span><span class="tab-short">NA '26</span>
   </button>
-  <button class="tab" data-tour="eu">
+  <button class="tab active" data-tour="eu">
     &#x1F30D; <span class="tab-full">Europe &middot; 2027</span><span class="tab-short">EU '27</span>
   </button>
   <button id="sidebar-toggle">&#9776; Concerts</button>
 </div>
 
 <div id="main">
-  <!-- North America 2026 -->
-  <div class="tour-pane" id="pane-na">
+  <!-- North America 2026 (Leaflet init deferred until first tab click) -->
+  <div class="tour-pane" id="pane-na" style="display:none">
     <div class="sidebar">
       <div class="sidebar-header">&#x1F525; Concerts by Votes</div>
       <div id="list-na"></div>
@@ -230,8 +230,8 @@
     <div class="map-container" id="map-na"></div>
   </div>
 
-  <!-- Europe 2027 (Leaflet init deferred until first tab click) -->
-  <div class="tour-pane" id="pane-eu" style="display:none">
+  <!-- Europe 2027 (default tab) -->
+  <div class="tour-pane" id="pane-eu">
     <div class="sidebar">
       <div class="sidebar-header">&#x1F525; Concerts by Votes</div>
       <div id="list-eu"></div>
@@ -502,11 +502,17 @@ function initTour({ concerts, mapId, listId, center, zoom }) {
 // =============================================================================
 // Initialize tours
 // =============================================================================
-const tours = {
-  na: initTour({ concerts: CONCERTS_NA, mapId: 'map-na', listId: 'list-na', center: [39.5, -98.35], zoom: 4 }),
-  eu: null
+const TOUR_CONFIG = {
+  na: { concerts: CONCERTS_NA, mapId: 'map-na', listId: 'list-na', center: [39.5, -98.35], zoom: 4 },
+  eu: { concerts: CONCERTS_EU, mapId: 'map-eu', listId: 'list-eu', center: [54, 9],        zoom: 5 }
 };
-tours.na.refreshLegend();
+const DEFAULT_TOUR = 'eu';
+let activeTour = DEFAULT_TOUR;
+
+// Only the default tour is built up front; the other waits until its pane is visible.
+const tours = { na: null, eu: null };
+tours[DEFAULT_TOUR] = initTour(TOUR_CONFIG[DEFAULT_TOUR]);
+tours[DEFAULT_TOUR].refreshLegend();
 
 // =============================================================================
 // Sidebar toggle (mobile)
@@ -525,8 +531,6 @@ document.getElementById('sidebar-backdrop').addEventListener('click', closeSideb
 // =============================================================================
 // Tab switching
 // =============================================================================
-let activeTour = 'na';
-
 const TOUR_META = {
   na: '20th Anniversary World Tour &middot; North America &middot; 49 shows',
   eu: '20th Anniversary World Tour &middot; Europe &middot; 21 shows'
@@ -543,10 +547,8 @@ function switchTab(tourId) {
   document.querySelectorAll('.tour-pane').forEach(p => { p.style.display = 'none'; });
   document.getElementById('pane-' + tourId).style.display = 'flex';
 
-  // Lazy-init EU on first visit
-  if (tourId === 'eu' && !tours.eu) {
-    tours.eu = initTour({ concerts: CONCERTS_EU, mapId: 'map-eu', listId: 'list-eu', center: [54, 9], zoom: 5 });
-  }
+  // Lazy-init on first visit
+  if (!tours[tourId]) tours[tourId] = initTour(TOUR_CONFIG[tourId]);
 
   document.getElementById('subtitle').innerHTML = TOUR_META[tourId];
 
@@ -568,21 +570,19 @@ function updateVotes(array) {
     (item.id.startsWith('e') ? byTour.eu : byTour.na).push(item);
   });
 
-  if (byTour.na.length) tours.na.updateVotes(byTour.na);
-
-  if (byTour.eu.length) {
-    if (tours.eu) {
-      tours.eu.updateVotes(byTour.eu);
+  Object.keys(byTour).forEach(key => {
+    if (!byTour[key].length) return;
+    if (tours[key]) {
+      tours[key].updateVotes(byTour[key]);
     } else {
-      byTour.eu.forEach(({ id, votes }) => {
-        const c = CONCERTS_EU.find(x => x.id === id);
+      byTour[key].forEach(({ id, votes }) => {
+        const c = TOUR_CONFIG[key].concerts.find(x => x.id === id);
         if (c) c.votes = votes;
       });
     }
-  }
+  });
 
-  if (activeTour === 'na') tours.na.refreshLegend();
-  else if (tours.eu)       tours.eu.refreshLegend();
+  tours[activeTour].refreshLegend();
 }
 
 // =============================================================================
