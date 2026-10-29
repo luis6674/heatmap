@@ -206,7 +206,7 @@
 <div id="header">
   <div>
     <h1>&#x1F480; FFDP Tour — Vote Heatmap</h1>
-    <div id="subtitle">20th Anniversary World Tour &middot; Europe &middot; 21 shows</div>
+    <div id="subtitle">20th Anniversary World Tour &middot; Europe &middot; 22 shows</div>
   </div>
 </div>
 
@@ -337,6 +337,7 @@ const CONCERTS_EU = [
   { id:"e19", date:"Feb 19", venue:"Unity Arena",                  city:"Oslo",        state:"NO", lat:59.9505, lng: 10.5893 },
   { id:"e20", date:"Feb 20", venue:"Avicii Arena",                 city:"Stockholm",   state:"SE", lat:59.2933, lng: 18.0830 },
   { id:"e21", date:"Feb 22", venue:"Veikkaus Arena",               city:"Helsinki",    state:"FI", lat:60.2055, lng: 24.9274 },
+  { id:"e22", date:"Jul 29–31", venue:"Wacken Open Air 2027",       city:"Wacken",      state:"DE", lat:53.9205, lng:  9.3745 },
 ];
 
 CONCERTS_NA.forEach(c => { c.votes = Math.floor(Math.random() * 21); });
@@ -533,7 +534,7 @@ document.getElementById('sidebar-backdrop').addEventListener('click', closeSideb
 // =============================================================================
 const TOUR_META = {
   na: '20th Anniversary World Tour &middot; North America &middot; 49 shows',
-  eu: '20th Anniversary World Tour &middot; Europe &middot; 21 shows'
+  eu: '20th Anniversary World Tour &middot; Europe &middot; 22 shows'
 };
 
 function switchTab(tourId) {
